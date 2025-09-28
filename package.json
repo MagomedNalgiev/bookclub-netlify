@@ -1,0 +1,27 @@
+{
+  "name": "bookclub-netlify",
+  "version": "1.0.0",
+  "description": "BookClub платформа для книжных клубов - Netlify версия",
+  "main": "public/index.html",
+  "scripts": {
+    "start": "echo 'Откройте public/index.html в браузере'",
+    "dev": "echo 'Локальная разработка - откройте public/index.html'",
+    "build": "echo 'Готово к деплою'",
+    "deploy": "echo 'Пушьте в GitHub для автодеплоя в Netlify'"
+  },
+  "keywords": [
+    "bookclub",
+    "books",
+    "reading",
+    "clubs",
+    "netlify",
+    "jamstack"
+  ],
+  "author": "BookClub Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YOURUSERNAME/bookclub-netlify.git"
+  },
+  "homepage": "https://bookclub.netlify.app"
+}

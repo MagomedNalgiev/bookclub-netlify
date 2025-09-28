@@ -1,0 +1,16 @@
+# Netlify redirects для одностраничного приложения
+
+# API маршруты к Netlify Functions (на будущее)
+/api/* /.netlify/functions/:splat 200
+
+# Страницы авторизации
+/auth/callback /auth/callback.html 200
+/auth/success /auth/success.html 200
+
+# Статические страницы
+/privacy /privacy.html 200
+/terms /terms.html 200
+/about /about.html 200
+
+# SPA fallback - ДОЛЖЕН БЫТЬ ПОСЛЕДНИМ
+/* /index.html 200

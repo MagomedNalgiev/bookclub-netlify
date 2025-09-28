@@ -1,0 +1,49 @@
+[build]
+  publish = "public"
+  command = "echo 'Статическая сборка завершена'"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+# API routes to Netlify Functions (на будущее)
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+# SPA fallback - ОБЯЗАТЕЛЬНО для одностраничного приложения
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Настройки разработки
+[dev]
+  command = "echo 'Откройте public/index.html в браузере'"
+  port = 3000
+  publish = "public"
+
+# Заголовки безопасности
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Кэширование статических файлов
+[[headers]]
+  for = "/css/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/js/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/images/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

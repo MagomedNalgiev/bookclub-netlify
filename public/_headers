@@ -1,0 +1,24 @@
+# Заголовки безопасности для всех страниц
+/*
+  X-Frame-Options: DENY
+  X-XSS-Protection: 1; mode=block
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+# Кэширование CSS файлов
+/css/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Кэширование JavaScript файлов
+/js/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Кэширование изображений
+/images/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Заголовки для manifest.json
+/manifest.json
+  Content-Type: application/manifest+json
+  Cache-Control: public, max-age=0

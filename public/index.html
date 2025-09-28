@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BookClub - Платформа для книжных клубов</title>
+
+    <!-- ВАЖНО: Правильные пути к CSS и JS -->
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="js/app.js" defer></script>
+
+    <!-- Остальные meta теги -->
+    <meta name="description" content="Присоединяйтесь к сообществу книголюбов">
+    <meta name="author" content="BookClub Team">
+    <meta name="theme-color" content="#6366f1">
+
+    <!-- Шрифты -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Конфигурация -->
+    <script>
+        window.ENV = {
+            API_URL: '/api',
+            SUPABASE_URL: '',
+            SUPABASE_KEY: '',
+            NODE_ENV: 'development'
+        };
+    </script>
+</head>
+<body>
+    <!-- Переключатель темы -->
+    <button class="theme-toggle" id="themeToggle" title="Переключить тему">
+        <span class="theme-icon">🌙</span>
+    </button>
+
+    <!-- GDPR баннер -->
+    <div class="gdpr-banner hidden" id="gdprBanner">
+        <div class="gdpr-content">
+            <p>Мы используем cookies для улучшения работы сайта. Продолжая использовать сайт, вы соглашаетесь с нашей <a href="/privacy">политикой конфиденциальности</a>.</p>
+            <div class="gdpr-actions">
+                <button class="btn btn--primary btn--sm" id="acceptGdpr">Принять</button>
+                <button class="btn btn--outline btn--sm" id="declineGdpr">Отклонить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Шапка сайта -->
+    <header class="header">
+        <div class="container">
+            <div class="logo">
+                <h1>📚 BookClub</h1>
+            </div>
+        </div>
+    </header>
+
+    <!-- Приветственная секция -->
+    <section class="welcome" id="welcomeSection">
+        <div class="container">
+            <h2>Добро пожаловать в BookClub!</h2>
+            <p>Присоединяйтесь к сообществу книголюбов, обсуждайте любимые произведения и открывайте новые миры литературы</p>
+
+            <div class="welcome__features">
+                <div class="feature-card">
+                    <div class="feature-icon">📚</div>
+                    <h3>Каталог книг</h3>
+                    <p>Огромная коллекция книг с рецензиями и рейтингами от читателей</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">👥</div>
+                    <h3>Книжные клубы</h3>
+                    <p>Создавайте и участвуйте в клубах по интересам и жанрам</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">💬</div>
+                    <h3>Обсуждения</h3>
+                    <p>Ведите дискуссии в реальном времени с единомышленниками</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🏆</div>
+                    <h3>Достижения</h3>
+                    <p>Получайте награды за активность и прогресс в чтении</p>
+                </div>
+            </div>
+
+            <div class="auth-form">
+                <div class="form-tabs">
+                    <button class="tab-btn active" data-tab="login">Вход</button>
+                    <button class="tab-btn" data-tab="register">Регистрация</button>
+                </div>
+
+                <!-- Форма входа -->
+                <form class="auth-form__content active" id="loginForm" data-form="login">
+                    <div class="form-group">
+                        <label for="loginEmail">Email или имя пользователя</label>
+                        <input type="text" id="loginEmail" class="form-control" placeholder="Введите email или username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="loginPassword">Пароль</label>
+                        <input type="password" id="loginPassword" class="form-control" placeholder="Введите пароль" required>
+                    </div>
+                    <div class="form-actions">
+                        <label class="checkbox-wrapper">
+                            <input type="checkbox" id="rememberMe">
+                            <span class="checkmark"></span>
+                            Запомнить меня
+                        </label>
+                        <a href="#" class="forgot-password">Забыли пароль?</a>
+                    </div>
+                    <button type="submit" class="btn btn--primary btn--full">Войти</button>
+                </form>
+
+                <!-- Форма регистрации -->
+                <form class="auth-form__content" id="registerForm" data-form="register">
+                    <div class="form-group">
+                        <label for="registerUsername">Имя пользователя</label>
+                        <input type="text" id="registerUsername" class="form-control" placeholder="Выберите имя пользователя" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="registerEmail">Email</label>
+                        <input type="email" id="registerEmail" class="form-control" placeholder="Введите ваш email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="registerPassword">Пароль</label>
+                        <input type="password" id="registerPassword" class="form-control" placeholder="Создайте пароль" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="registerPasswordConfirm">Подтвердите пароль</label>
+                        <input type="password" id="registerPasswordConfirm" class="form-control" placeholder="Повторите пароль" required>
+                    </div>
+                    <div class="form-actions">
+                        <label class="checkbox-wrapper">
+                            <input type="checkbox" id="agreeTerms" required>
+                            <span class="checkmark"></span>
+                            Я согласен с правилами сервиса
+                        </label>
+                    </div>
+                    <button type="submit" class="btn btn--primary btn--full">Зарегистрироваться</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- Основной контент (скрыт изначально) -->
+    <main class="main hidden" id="mainContent">
+        <div class="container">
+            <div class="user-welcome">
+                <h2>Добро пожаловать!</h2>
+                <p>Вы вошли в систему</p>
+            </div>
+        </div>
+    </main>
+</body>
+</html>
