@@ -5,21 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BookClub - Платформа для книжных клубов</title>
 
-    <!-- ВАЖНО: Правильные пути к CSS и JS -->
+    <!-- Правильные пути к CSS и JS -->
     <link rel="stylesheet" href="css/styles.css">
     <script src="js/app.js" defer></script>
 
-    <!-- Остальные meta теги -->
-    <meta name="description" content="Присоединяйтесь к сообществу книголюбов">
+    <!-- Meta теги для SEO -->
+    <meta name="description" content="Присоединяйтесь к сообществу книголюбов, обсуждайте любимые произведения и открывайте новые миры литературы">
+    <meta name="keywords" content="книги, чтение, клубы, обсуждения, литература, рекомендации">
     <meta name="author" content="BookClub Team">
+
+    <!-- PWA Meta -->
     <meta name="theme-color" content="#6366f1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="BookClub">
 
     <!-- Шрифты -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- Конфигурация -->
+    <!-- Конфигурация для API -->
     <script>
         window.ENV = {
             API_URL: '/.netlify/functions/api-demo',
@@ -36,6 +41,12 @@
         <span class="theme-icon">🌙</span>
     </button>
 
+    <!-- Загрузочный экран -->
+    <div class="loading-overlay hidden" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <p>Загрузка...</p>
+    </div>
+
     <!-- GDPR баннер -->
     <div class="gdpr-banner hidden" id="gdprBanner">
         <div class="gdpr-content">
@@ -50,107 +61,276 @@
     <!-- Шапка сайта -->
     <header class="header">
         <div class="container">
-            <div class="logo">
-                <h1>📚 BookClub</h1>
+            <div class="header__content">
+                <div class="logo">
+                    <h1>📚 BookClub</h1>
+                </div>
+
+                <!-- Поиск (показывается после авторизации) -->
+                <div class="global-search hidden" id="globalSearch">
+                    <div class="search-input-wrapper">
+                        <input type="text" placeholder="Поиск по всему сайту..." class="form-control" id="globalSearchInput">
+                        <span class="search-icon">🔍</span>
+                    </div>
+                    <div class="search-suggestions hidden" id="searchSuggestions"></div>
+                </div>
+
+                <!-- Навигация (показывается после авторизации) -->
+                <nav class="nav hidden" id="mainNav">
+                    <a href="#" class="nav__link active" data-section="feed">
+                        <span class="nav-icon">🏠</span>
+                        <span class="nav-text">Лента</span>
+                    </a>
+                    <a href="#" class="nav__link" data-section="catalog">
+                        <span class="nav-icon">📖</span>
+                        <span class="nav-text">Каталог</span>
+                    </a>
+                    <a href="#" class="nav__link" data-section="clubs">
+                        <span class="nav-icon">👥</span>
+                        <span class="nav-text">Клубы</span>
+                    </a>
+                    <a href="#" class="nav__link" data-section="events">
+                        <span class="nav-icon">📅</span>
+                        <span class="nav-text">События</span>
+                    </a>
+                    <a href="#" class="nav__link" data-section="profile">
+                        <span class="nav-icon">👤</span>
+                        <span class="nav-text">Профиль</span>
+                    </a>
+                </nav>
+
+                <!-- Информация о пользователе (показывается после авторизации) -->
+                <div class="user-info hidden" id="userInfo">
+                    <button class="notifications-btn" id="notificationsBtn">
+                        <span class="notification-icon">🔔</span>
+                        <span class="notification-badge hidden" id="notificationBadge">0</span>
+                    </button>
+                    <div class="user-avatar" id="userAvatar">
+                        <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face" alt="Аватар">
+                    </div>
+                    <span class="user-name" id="userName">Пользователь</span>
+                    <button class="btn btn--outline btn--sm" id="logoutBtn">Выйти</button>
+                </div>
             </div>
         </div>
     </header>
 
-    <!-- Приветственная секция -->
+    <!-- Приветственная секция (для неавторизованных пользователей) -->
     <section class="welcome" id="welcomeSection">
         <div class="container">
-            <h2>Добро пожаловать в BookClub!</h2>
-            <p>Присоединяйтесь к сообществу книголюбов, обсуждайте любимые произведения и открывайте новые миры литературы</p>
+            <div class="welcome__content">
+                <h2>Добро пожаловать в BookClub!</h2>
+                <p class="welcome__subtitle">Присоединяйтесь к сообществу книголюбов, обсуждайте любимые произведения и открывайте новые миры литературы</p>
 
-            <div class="welcome__features">
-                <div class="feature-card">
-                    <div class="feature-icon">📚</div>
-                    <h3>Каталог книг</h3>
-                    <p>Огромная коллекция книг с рецензиями и рейтингами от читателей</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">👥</div>
-                    <h3>Книжные клубы</h3>
-                    <p>Создавайте и участвуйте в клубах по интересам и жанрам</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">💬</div>
-                    <h3>Обсуждения</h3>
-                    <p>Ведите дискуссии в реальном времени с единомышленниками</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🏆</div>
-                    <h3>Достижения</h3>
-                    <p>Получайте награды за активность и прогресс в чтении</p>
-                </div>
-            </div>
-
-            <div class="auth-form">
-                <div class="form-tabs">
-                    <button class="tab-btn active" data-tab="login">Вход</button>
-                    <button class="tab-btn" data-tab="register">Регистрация</button>
+                <div class="welcome__features">
+                    <div class="feature-card">
+                        <div class="feature-icon">📚</div>
+                        <h3>Каталог книг</h3>
+                        <p>Огромная коллекция книг с рецензиями и рейтингами от читателей</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">👥</div>
+                        <h3>Книжные клубы</h3>
+                        <p>Создавайте и участвуйте в клубах по интересам и жанрам</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">💬</div>
+                        <h3>Обсуждения</h3>
+                        <p>Ведите дискуссии в реальном времени с единомышленниками</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🏆</div>
+                        <h3>Достижения</h3>
+                        <p>Получайте награды за активность и прогресс в чтении</p>
+                    </div>
                 </div>
 
-                <!-- Форма входа -->
-                <form class="auth-form__content active" id="loginForm" data-form="login">
-                    <div class="form-group">
-                        <label for="loginEmail">Email или имя пользователя</label>
-                        <input type="text" id="loginEmail" class="form-control" placeholder="Введите email или username" required>
+                <div class="auth-form">
+                    <div class="form-tabs">
+                        <button class="tab-btn active" data-tab="login">Вход</button>
+                        <button class="tab-btn" data-tab="register">Регистрация</button>
                     </div>
-                    <div class="form-group">
-                        <label for="loginPassword">Пароль</label>
-                        <input type="password" id="loginPassword" class="form-control" placeholder="Введите пароль" required>
-                    </div>
-                    <div class="form-actions">
-                        <label class="checkbox-wrapper">
-                            <input type="checkbox" id="rememberMe">
-                            <span class="checkmark"></span>
-                            Запомнить меня
-                        </label>
-                        <a href="#" class="forgot-password">Забыли пароль?</a>
-                    </div>
-                    <button type="submit" class="btn btn--primary btn--full">Войти</button>
-                </form>
 
-                <!-- Форма регистрации -->
-                <form class="auth-form__content" id="registerForm" data-form="register">
-                    <div class="form-group">
-                        <label for="registerUsername">Имя пользователя</label>
-                        <input type="text" id="registerUsername" class="form-control" placeholder="Выберите имя пользователя" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="registerEmail">Email</label>
-                        <input type="email" id="registerEmail" class="form-control" placeholder="Введите ваш email" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="registerPassword">Пароль</label>
-                        <input type="password" id="registerPassword" class="form-control" placeholder="Создайте пароль" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="registerPasswordConfirm">Подтвердите пароль</label>
-                        <input type="password" id="registerPasswordConfirm" class="form-control" placeholder="Повторите пароль" required>
-                    </div>
-                    <div class="form-actions">
-                        <label class="checkbox-wrapper">
-                            <input type="checkbox" id="agreeTerms" required>
-                            <span class="checkmark"></span>
-                            Я согласен с правилами сервиса
-                        </label>
-                    </div>
-                    <button type="submit" class="btn btn--primary btn--full">Зарегистрироваться</button>
-                </form>
+                    <!-- Форма входа -->
+                    <form class="auth-form__content active" id="loginForm" data-form="login">
+                        <div class="form-group">
+                            <label for="loginEmail">Email или имя пользователя</label>
+                            <input type="text" id="loginEmail" class="form-control" placeholder="Введите email или username" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="loginPassword">Пароль</label>
+                            <input type="password" id="loginPassword" class="form-control" placeholder="Введите пароль" required>
+                        </div>
+                        <div class="form-actions">
+                            <label class="checkbox-wrapper">
+                                <input type="checkbox" id="rememberMe">
+                                <span class="checkmark"></span>
+                                Запомнить меня
+                            </label>
+                            <a href="#" class="forgot-password" id="forgotPasswordLink">Забыли пароль?</a>
+                        </div>
+                        <button type="submit" class="btn btn--primary btn--full">Войти</button>
+                    </form>
+
+                    <!-- Форма регистрации -->
+                    <form class="auth-form__content" id="registerForm" data-form="register">
+                        <div class="form-group">
+                            <label for="registerUsername">Имя пользователя</label>
+                            <input type="text" id="registerUsername" class="form-control" placeholder="Выберите имя пользователя" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="registerEmail">Email</label>
+                            <input type="email" id="registerEmail" class="form-control" placeholder="Введите ваш email" required>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="registerFirstName">Имя</label>
+                                <input type="text" id="registerFirstName" class="form-control" placeholder="Ваше имя">
+                            </div>
+                            <div class="form-group">
+                                <label for="registerLastName">Фамилия</label>
+                                <input type="text" id="registerLastName" class="form-control" placeholder="Ваша фамилия">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="registerPassword">Пароль</label>
+                            <input type="password" id="registerPassword" class="form-control" placeholder="Создайте пароль" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="registerPasswordConfirm">Подтвердите пароль</label>
+                            <input type="password" id="registerPasswordConfirm" class="form-control" placeholder="Повторите пароль" required>
+                        </div>
+                        <div class="form-actions">
+                            <label class="checkbox-wrapper">
+                                <input type="checkbox" id="agreeTerms" required>
+                                <span class="checkmark"></span>
+                                Я согласен с правилами сервиса
+                            </label>
+                        </div>
+                        <button type="submit" class="btn btn--primary btn--full">Зарегистрироваться</button>
+                    </form>
+                </div>
             </div>
         </div>
     </section>
 
-    <!-- Основной контент (скрыт изначально) -->
+    <!-- Основной контент (показывается после авторизации) -->
     <main class="main hidden" id="mainContent">
         <div class="container">
-            <div class="user-welcome">
-                <h2>Добро пожаловать!</h2>
-                <p>Вы вошли в систему</p>
+            <!-- Хлебные крошки -->
+            <nav class="breadcrumb" id="breadcrumb">
+                <ol class="breadcrumb__list">
+                    <li class="breadcrumb__item">
+                        <a href="#" data-section="feed">Главная</a>
+                    </li>
+                </ol>
+            </nav>
+
+            <!-- Секции контента -->
+            <div class="content-sections" id="contentSections">
+                <!-- Лента активности -->
+                <section class="content-section active" id="feedSection" data-section="feed">
+                    <div class="section-header">
+                        <h2>📰 Лента активности</h2>
+                        <div class="section-actions">
+                            <button class="btn btn--outline btn--sm" id="refreshFeed">🔄 Обновить</button>
+                        </div>
+                    </div>
+                    <div class="feed-content" id="feedContent">
+                        <div class="feed-loading">Загрузка ленты активности...</div>
+                    </div>
+                </section>
+
+                <!-- Каталог книг -->
+                <section class="content-section" id="catalogSection" data-section="catalog">
+                    <div class="section-header">
+                        <h2>📚 Каталог книг</h2>
+                        <div class="section-actions">
+                            <span class="badge badge--info">Загрузка...</span>
+                        </div>
+                    </div>
+                    <div class="catalog-content">
+                        <div class="feed-loading">Загрузка каталога книг...</div>
+                    </div>
+                </section>
+
+                <!-- Книжные клубы -->
+                <section class="content-section" id="clubsSection" data-section="clubs">
+                    <div class="section-header">
+                        <h2>👥 Книжные клубы</h2>
+                        <div class="section-actions">
+                            <span class="badge badge--info">Загрузка...</span>
+                        </div>
+                    </div>
+                    <div class="clubs-content">
+                        <div class="feed-loading">Загрузка клубов...</div>
+                    </div>
+                </section>
+
+                <!-- События -->
+                <section class="content-section" id="eventsSection" data-section="events">
+                    <div class="section-header">
+                        <h2>📅 События</h2>
+                        <div class="section-actions">
+                            <span class="badge badge--warning">В разработке</span>
+                        </div>
+                    </div>
+                    <div class="events-content">
+                        <div class="coming-soon">
+                            <h3>🚧 Раздел в разработке</h3>
+                            <p>Скоро здесь будут отображаться книжные события, встречи и мероприятия.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Профиль -->
+                <section class="content-section" id="profileSection" data-section="profile">
+                    <div class="section-header">
+                        <h2>👤 Профиль</h2>
+                        <div class="section-actions">
+                            <span class="badge badge--warning">В разработке</span>
+                        </div>
+                    </div>
+                    <div class="profile-content">
+                        <div class="coming-soon">
+                            <h3>🚧 Раздел в разработке</h3>
+                            <p>Скоро здесь будет ваш профиль с достижениями, статистикой и настройками.</p>
+                        </div>
+                    </div>
+                </section>
             </div>
         </div>
     </main>
+
+    <!-- Онбординг тур -->
+    <div class="onboarding-overlay hidden" id="onboardingOverlay">
+        <div class="onboarding-modal">
+            <div class="onboarding-content" id="onboardingContent">
+                <h2>Добро пожаловать!</h2>
+                <p>Давайте познакомим вас с основными возможностями платформы.</p>
+            </div>
+            <div class="onboarding-actions">
+                <button class="btn btn--outline" id="skipTour">Пропустить</button>
+                <button class="btn btn--primary" id="nextTour">Далее</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Панель уведомлений -->
+    <div class="notifications-panel hidden" id="notificationsPanel">
+        <div class="notifications-header">
+            <h3>Уведомления</h3>
+            <button class="notifications-close" id="notificationsClose">✕</button>
+        </div>
+        <div class="notifications-content" id="notificationsContent">
+            <!-- Уведомления будут загружены здесь -->
+        </div>
+    </div>
+
+    <!-- Контейнер для всплывающих уведомлений -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Контейнер для модальных окон -->
+    <div class="modal-container" id="modalContainer"></div>
 </body>
 </html>
