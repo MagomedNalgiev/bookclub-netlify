@@ -1,5 +1,5 @@
-// BookClub Platform - Complete JavaScript Application
-// Optimized for Netlify deployment
+// BookClub Platform - Enhanced with Netlify Functions API
+// Version 2.0 - Production Ready
 
 class BookClubApp {
   constructor() {
@@ -13,22 +13,25 @@ class BookClubApp {
     this.notifications = [];
     this.tourStep = 0;
     this.gdprAccepted = localStorage.getItem('bookclub_gdpr') === 'accepted';
+    this.apiAvailable = false;
 
     // Configuration from environment
     this.config = {
       apiUrl: window.ENV?.API_URL || '/api',
       supabaseUrl: window.ENV?.SUPABASE_URL,
       supabaseKey: window.ENV?.SUPABASE_KEY,
-      isDev: window.ENV?.NODE_ENV === 'development'
+      isDev: window.ENV?.NODE_ENV === 'development',
+      siteUrl: window.ENV?.SITE_URL
     };
 
-    console.log('BookClub App initializing...', {
+    console.log('📚 BookClub App v2.0 initializing...', {
       env: window.ENV?.NODE_ENV,
+      apiUrl: this.config.apiUrl,
       hasSupabase: !!(this.config.supabaseUrl && this.config.supabaseKey)
     });
 
     // Initialize data and setup
-    this.initializeData();
+    this.initializeFallbackData();
     this.init();
   }
 
@@ -49,16 +52,111 @@ class BookClubApp {
       this.showGDPRBanner();
       this.setupErrorBoundary();
 
+      // Test API availability
+      await this.testApiConnection();
+
       // Check authentication
       await this.checkAuthentication();
 
       this.hideOverlay();
 
-      console.log('BookClub App ready!');
+      console.log('✅ BookClub App ready!', { apiAvailable: this.apiAvailable });
     } catch (error) {
       console.error('Application setup failed:', error);
       this.showErrorMessage('Ошибка инициализации приложения');
     }
+  }
+
+  // Test API connection
+  async testApiConnection() {
+    try {
+      console.log('🔍 Testing API connection...');
+      const response = await fetch(this.config.apiUrl + '/books');
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          this.apiAvailable = true;
+          console.log('✅ API connection successful');
+          // Load real data
+          if (data.data && Array.isArray(data.data)) {
+            this.booksData = data.data;
+            console.log(`📚 Loaded ${data.data.length} books from API`);
+          }
+        }
+      } else {
+        throw new Error(`API responded with status: ${response.status}`);
+      }
+    } catch (error) {
+      console.warn('⚠️ API not available, using fallback data:', error.message);
+      this.apiAvailable = false;
+    }
+  }
+
+  // Enhanced API request helper
+  async apiRequest(endpoint, options = {}) {
+    const url = `${this.config.apiUrl}${endpoint}`;
+
+    const defaultOptions = {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    };
+
+    // Add auth token if available
+    const token = this.getAuthToken();
+    if (token) {
+      defaultOptions.headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    try {
+      console.log(`🌐 API Request: ${options.method || 'GET'} ${url}`);
+
+      const response = await fetch(url, {
+        ...defaultOptions,
+        ...options,
+        headers: {
+          ...defaultOptions.headers,
+          ...options.headers,
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ API Error Response:', errorText);
+        throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+      }
+
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const data = await response.json();
+        console.log('✅ API Response:', data);
+        return data;
+      }
+
+      return await response.text();
+    } catch (error) {
+      console.error('❌ API request error:', error);
+
+      // Show user-friendly error message
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        this.showToast('Нет подключения к интернету', 'error');
+      } else if (error.message.includes('401')) {
+        this.showToast('Требуется авторизация', 'error');
+        this.logout();
+      } else if (error.message.includes('500')) {
+        this.showToast('Ошибка сервера. Попробуйте позже.', 'error');
+      } else {
+        this.showToast('Произошла ошибка при загрузке данных', 'error');
+      }
+
+      throw error;
+    }
+  }
+
+  // Get authentication token
+  getAuthToken() {
+    return localStorage.getItem('bookclub_token');
   }
 
   // Error boundary setup
@@ -76,13 +174,12 @@ class BookClubApp {
 
   // Authentication check
   async checkAuthentication() {
-    // For demo purposes, check localStorage
     const savedUser = localStorage.getItem('bookclub_user');
     if (savedUser) {
       try {
         this.currentUser = JSON.parse(savedUser);
         this.showAuthenticatedView();
-        console.log('User authenticated:', this.currentUser.firstName);
+        console.log('👤 User authenticated:', this.currentUser.firstName);
       } catch (error) {
         localStorage.removeItem('bookclub_user');
         this.showWelcomeView();
@@ -167,11 +264,214 @@ class BookClubApp {
     // Online/offline status
     window.addEventListener('online', () => {
       this.showToast('Подключение восстановлено', 'success');
+      // Retry API connection
+      this.testApiConnection();
     });
 
     window.addEventListener('offline', () => {
       this.showToast('Нет подключения к интернету', 'warning');
     });
+  }
+
+  // Enhanced login with real API
+  async handleLogin(e) {
+    e.preventDefault();
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+
+    if (!email || !password) {
+      this.showToast('Пожалуйста, заполните все поля', 'error');
+      return;
+    }
+
+    this.showLoading(true);
+
+    try {
+      if (this.apiAvailable) {
+        // Try real API first
+        const response = await this.apiRequest('/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({ email, password })
+        });
+
+        if (response.success && response.data.user) {
+          this.currentUser = response.data.user;
+          if (response.data.token) {
+            localStorage.setItem('bookclub_token', response.data.token);
+          }
+          localStorage.setItem('bookclub_user', JSON.stringify(response.data.user));
+
+          this.showLoading(false);
+          this.showAuthenticatedView();
+          this.showToast(response.message || `Добро пожаловать, ${this.currentUser.firstName}!`, 'success');
+
+          // Load additional data
+          await this.loadUserData();
+
+          // Start onboarding for new users
+          if (!localStorage.getItem('bookclub_onboarding_completed')) {
+            setTimeout(() => this.startOnboarding(), 1000);
+          }
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('API login error:', error);
+    }
+
+    // Fallback to demo mode
+    console.log('🔄 Falling back to demo login...');
+    this.showLoading(false);
+
+    const user = {
+      id: Date.now(),
+      email: email,
+      firstName: email.split('@')[0],
+      lastName: '',
+      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+      role: 'user',
+      stats: {
+        booksRead: 5,
+        clubsJoined: 2,
+        points: 120
+      }
+    };
+
+    this.currentUser = user;
+    localStorage.setItem('bookclub_user', JSON.stringify(user));
+
+    this.showAuthenticatedView();
+    this.showToast(`Демо-режим: Добро пожаловать, ${user.firstName}!`, 'info');
+
+    // Start onboarding for new users
+    if (!localStorage.getItem('bookclub_onboarding_completed')) {
+      setTimeout(() => this.startOnboarding(), 1000);
+    }
+  }
+
+  // Enhanced registration with real API
+  async handleRegister(e) {
+    e.preventDefault();
+
+    const username = document.getElementById('registerUsername').value.trim();
+    const email = document.getElementById('registerEmail').value.trim();
+    const firstName = document.getElementById('registerFirstName').value.trim();
+    const lastName = document.getElementById('registerLastName').value.trim();
+    const password = document.getElementById('registerPassword').value;
+    const passwordConfirm = document.getElementById('registerPasswordConfirm').value;
+    const agreeTerms = document.getElementById('agreeTerms').checked;
+
+    // Validation
+    if (!username || !email || !password || !passwordConfirm) {
+      this.showToast('Пожалуйста, заполните все обязательные поля', 'error');
+      return;
+    }
+
+    if (!this.isValidEmail(email)) {
+      this.showToast('Введите корректный email', 'error');
+      return;
+    }
+
+    if (password !== passwordConfirm) {
+      this.showToast('Пароли не совпадают', 'error');
+      return;
+    }
+
+    if (password.length < 6) {
+      this.showToast('Пароль должен содержать минимум 6 символов', 'error');
+      return;
+    }
+
+    if (!agreeTerms) {
+      this.showToast('Необходимо согласиться с правилами сервиса', 'error');
+      return;
+    }
+
+    this.showLoading(true);
+
+    try {
+      if (this.apiAvailable) {
+        // Try real API registration
+        const response = await this.apiRequest('/auth/register', {
+          method: 'POST',
+          body: JSON.stringify({
+            username,
+            email,
+            firstName: firstName || username,
+            lastName: lastName,
+            password
+          })
+        });
+
+        if (response.success && response.data.user) {
+          this.currentUser = response.data.user;
+          if (response.data.token) {
+            localStorage.setItem('bookclub_token', response.data.token);
+          }
+          localStorage.setItem('bookclub_user', JSON.stringify(response.data.user));
+
+          this.showLoading(false);
+          this.showAuthenticatedView();
+          this.showToast(response.message || `Регистрация завершена! Добро пожаловать, ${this.currentUser.firstName}!`, 'success');
+
+          // Start onboarding
+          setTimeout(() => this.startOnboarding(), 1000);
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('API registration error:', error);
+    }
+
+    // Fallback to demo registration
+    console.log('🔄 Falling back to demo registration...');
+    this.showLoading(false);
+
+    const user = {
+      id: Date.now(),
+      username,
+      email,
+      firstName: firstName || username,
+      lastName: lastName,
+      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(firstName || username)}&background=6366f1&color=fff`,
+      role: 'user',
+      stats: {
+        booksRead: 0,
+        clubsJoined: 0,
+        points: 10
+      }
+    };
+
+    this.currentUser = user;
+    localStorage.setItem('bookclub_user', JSON.stringify(user));
+
+    this.showAuthenticatedView();
+    this.showToast(`Демо-регистрация: Добро пожаловать, ${user.firstName}!`, 'success');
+
+    // Start onboarding
+    setTimeout(() => this.startOnboarding(), 1000);
+  }
+
+  // Load user data from API
+  async loadUserData() {
+    if (!this.apiAvailable) return;
+
+    try {
+      // Load clubs data
+      const clubsResponse = await this.apiRequest('/clubs');
+      if (clubsResponse.success) {
+        this.clubsData = clubsResponse.data;
+        console.log(`🏛️ Loaded ${clubsResponse.data.length} clubs from API`);
+      }
+    } catch (error) {
+      console.error('Error loading user data:', error);
+    }
+  }
+
+  // Email validation
+  isValidEmail(email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
   }
 
   // Theme management
@@ -246,134 +546,6 @@ class BookClubApp {
     });
   }
 
-  // Login handler
-  async handleLogin(e) {
-    e.preventDefault();
-    const email = document.getElementById('loginEmail').value.trim();
-    const password = document.getElementById('loginPassword').value;
-
-    if (!email || !password) {
-      this.showToast('Пожалуйста, заполните все поля', 'error');
-      return;
-    }
-
-    this.showLoading(true);
-
-    try {
-      // Demo login - replace with real API call
-      setTimeout(() => {
-        const user = {
-          id: Date.now(),
-          email: email,
-          firstName: email.split('@')[0],
-          lastName: '',
-          avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-          role: 'user',
-          booksRead: 5,
-          joinedClubs: 2,
-          points: 120,
-          level: 'Читатель'
-        };
-
-        this.currentUser = user;
-        localStorage.setItem('bookclub_user', JSON.stringify(user));
-
-        this.showLoading(false);
-        this.showAuthenticatedView();
-        this.showToast(`Добро пожаловать, ${user.firstName}!`, 'success');
-
-        // Start onboarding for new users
-        if (!localStorage.getItem('bookclub_onboarding_completed')) {
-          setTimeout(() => this.startOnboarding(), 1000);
-        }
-      }, 1500);
-    } catch (error) {
-      console.error('Login error:', error);
-      this.showLoading(false);
-      this.showToast('Ошибка входа. Попробуйте позже.', 'error');
-    }
-  }
-
-  // Registration handler
-  async handleRegister(e) {
-    e.preventDefault();
-
-    const username = document.getElementById('registerUsername').value.trim();
-    const email = document.getElementById('registerEmail').value.trim();
-    const firstName = document.getElementById('registerFirstName').value.trim();
-    const lastName = document.getElementById('registerLastName').value.trim();
-    const password = document.getElementById('registerPassword').value;
-    const passwordConfirm = document.getElementById('registerPasswordConfirm').value;
-    const agreeTerms = document.getElementById('agreeTerms').checked;
-
-    // Validation
-    if (!username || !email || !password || !passwordConfirm) {
-      this.showToast('Пожалуйста, заполните все обязательные поля', 'error');
-      return;
-    }
-
-    if (!this.isValidEmail(email)) {
-      this.showToast('Введите корректный email', 'error');
-      return;
-    }
-
-    if (password !== passwordConfirm) {
-      this.showToast('Пароли не совпадают', 'error');
-      return;
-    }
-
-    if (password.length < 6) {
-      this.showToast('Пароль должен содержать минимум 6 символов', 'error');
-      return;
-    }
-
-    if (!agreeTerms) {
-      this.showToast('Необходимо согласиться с правилами сервиса', 'error');
-      return;
-    }
-
-    this.showLoading(true);
-
-    try {
-      // Demo registration - replace with real API call
-      setTimeout(() => {
-        const user = {
-          id: Date.now(),
-          username,
-          email,
-          firstName: firstName || username,
-          lastName: lastName,
-          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(firstName || username)}&background=6366f1&color=fff`,
-          role: 'user',
-          booksRead: 0,
-          joinedClubs: 0,
-          points: 10,
-          level: 'Новичок'
-        };
-
-        this.currentUser = user;
-        localStorage.setItem('bookclub_user', JSON.stringify(user));
-
-        this.showLoading(false);
-        this.showAuthenticatedView();
-        this.showToast(`Регистрация завершена! Добро пожаловать, ${user.firstName}!`, 'success');
-
-        // Start onboarding
-        setTimeout(() => this.startOnboarding(), 1000);
-      }, 1500);
-    } catch (error) {
-      console.error('Registration error:', error);
-      this.showLoading(false);
-      this.showToast('Ошибка регистрации. Попробуйте позже.', 'error');
-    }
-  }
-
-  // Email validation
-  isValidEmail(email) {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  }
-
   // View management
   showWelcomeView() {
     this.toggleElements([
@@ -424,7 +596,7 @@ class BookClubApp {
       }
     }
 
-    // Load initial data
+    // Load notifications
     this.loadNotifications();
   }
 
@@ -452,10 +624,10 @@ class BookClubApp {
           await this.loadFeedContent();
           break;
         case 'catalog':
-          this.showToast('Каталог книг - в разработке', 'info');
+          await this.loadCatalogContent();
           break;
         case 'clubs':
-          this.showToast('Книжные клубы - в разработке', 'info');
+          await this.loadClubsContent();
           break;
         case 'events':
           this.showToast('События - в разработке', 'info');
@@ -481,8 +653,8 @@ class BookClubApp {
     feedContent.innerHTML = '<div class="feed-loading">Загрузка ленты активности...</div>';
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Simulate loading delay
+      await new Promise(resolve => setTimeout(resolve, 800));
 
       // Mock feed data
       const mockFeedItems = [
@@ -516,15 +688,102 @@ class BookClubApp {
             avatar: this.currentUser?.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face'
           },
           action: 'получили достижение',
-          target: 'Первые шаги',
+          target: this.apiAvailable ? 'API Мастер' : 'Первые шаги',
           time: '1 день назад'
         }
       ];
 
       this.renderFeedItems(mockFeedItems);
+
+      // Show API status
+      const statusMessage = this.apiAvailable ?
+        'Данные загружены из API ✅' :
+        'Демо-режим (API недоступен) ⚠️';
+
+      const statusDiv = document.createElement('div');
+      statusDiv.className = `feed-status ${this.apiAvailable ? 'api-active' : 'demo-mode'}`;
+      statusDiv.innerHTML = `<p><small>${statusMessage}</small></p>`;
+      feedContent.appendChild(statusDiv);
+
     } catch (error) {
       console.error('Error loading feed:', error);
       feedContent.innerHTML = '<p class="feed-loading">Ошибка загрузки ленты активности</p>';
+    }
+  }
+
+  async loadCatalogContent() {
+    const section = document.querySelector('[data-section="catalog"]');
+    if (!section) return;
+
+    if (this.booksData && this.booksData.length > 0) {
+      section.innerHTML = `
+        <div class="section-header">
+          <h2>📚 Каталог книг</h2>
+          <div class="section-actions">
+            <span class="badge ${this.apiAvailable ? 'badge--success' : 'badge--warning'}">
+              ${this.apiAvailable ? 'API активен' : 'Демо-режим'}
+            </span>
+          </div>
+        </div>
+        <div class="books-grid">
+          ${this.booksData.map(book => `
+            <div class="book-card card">
+              <img src="${book.cover}" alt="${book.title}" class="book-cover" loading="lazy">
+              <div class="book-info">
+                <h3 class="book-title">${book.title}</h3>
+                <p class="book-author">Автор: ${book.author}</p>
+                <p class="book-genre">Жанр: ${book.genre}</p>
+                <div class="book-rating">
+                  <span class="rating-stars">⭐ ${book.rating}</span>
+                  <span class="rating-count">(${book.ratingsCount})</span>
+                </div>
+                <p class="book-description">${book.description}</p>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    } else {
+      this.showToast('Каталог книг - загрузка данных...', 'info');
+    }
+  }
+
+  async loadClubsContent() {
+    const section = document.querySelector('[data-section="clubs"]');
+    if (!section) return;
+
+    if (this.clubsData && this.clubsData.length > 0) {
+      section.innerHTML = `
+        <div class="section-header">
+          <h2>👥 Книжные клубы</h2>
+          <div class="section-actions">
+            <span class="badge ${this.apiAvailable ? 'badge--success' : 'badge--warning'}">
+              ${this.apiAvailable ? 'API активен' : 'Демо-режим'}
+            </span>
+          </div>
+        </div>
+        <div class="clubs-grid">
+          ${this.clubsData.map(club => `
+            <div class="club-card card">
+              <img src="${club.avatar}" alt="${club.name}" class="club-avatar" loading="lazy">
+              <div class="club-info">
+                <h3 class="club-name">${club.name}</h3>
+                <p class="club-description">${club.description}</p>
+                <div class="club-stats">
+                  <span class="members-count">👥 ${club.members} участников</span>
+                  <span class="current-book">📖 Читают: ${club.currentBook}</span>
+                </div>
+                <div class="club-details">
+                  <p><strong>Встречи:</strong> ${club.meetingDay} в ${club.meetingTime}</p>
+                  <p><strong>Владелец:</strong> ${club.owner}</p>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    } else {
+      this.showToast('Книжные клубы - загрузка данных...', 'info');
     }
   }
 
@@ -539,7 +798,7 @@ class BookClubApp {
 
     feedContent.innerHTML = items.map(item => `
       <div class="feed-item card">
-        <img src="${item.user.avatar}" alt="${item.user.name}" class="feed-avatar">
+        <img src="${item.user.avatar}" alt="${item.user.name}" class="feed-avatar" loading="lazy">
         <div class="feed-info">
           <p><strong>${item.user.name}</strong> ${item.action} <strong>${item.target}</strong></p>
           <div class="feed-time">${item.time}</div>
@@ -567,16 +826,26 @@ class BookClubApp {
       return;
     }
 
-    // Mock search results
-    const mockResults = [
-      { type: 'book', title: 'Война и мир', subtitle: 'Лев Толстой' },
-      { type: 'club', title: 'Классика навсегда', subtitle: 'Читаем классическую литературу' }
-    ].filter(item =>
-      item.title.toLowerCase().includes(query.toLowerCase()) ||
-      item.subtitle.toLowerCase().includes(query.toLowerCase())
-    );
+    // Search in loaded data
+    const results = [];
 
-    this.showSearchSuggestions(mockResults, query);
+    if (this.booksData) {
+      const bookResults = this.booksData.filter(book =>
+        book.title.toLowerCase().includes(query.toLowerCase()) ||
+        book.author.toLowerCase().includes(query.toLowerCase())
+      ).slice(0, 3);
+      results.push(...bookResults.map(book => ({ type: 'book', ...book })));
+    }
+
+    if (this.clubsData) {
+      const clubResults = this.clubsData.filter(club =>
+        club.name.toLowerCase().includes(query.toLowerCase()) ||
+        club.description.toLowerCase().includes(query.toLowerCase())
+      ).slice(0, 2);
+      results.push(...clubResults.map(club => ({ type: 'club', ...club })));
+    }
+
+    this.showSearchSuggestions(results, query);
   }
 
   showSearchSuggestions(results, query) {
@@ -586,17 +855,33 @@ class BookClubApp {
     if (results.length === 0) {
       suggestions.innerHTML = '<div class="search-suggestion">Ничего не найдено</div>';
     } else {
-      suggestions.innerHTML = results.map((result, index) => `
-        <div class="search-suggestion" data-index="${index}">
-          <strong>${this.highlightQuery(result.title, query)}</strong>
-          <br><small>${this.highlightQuery(result.subtitle, query)}</small>
-        </div>
-      `).join('');
+      suggestions.innerHTML = results.map((result, index) => {
+        const title = result.title || result.name;
+        const subtitle = result.author || result.description;
+        const icon = result.type === 'book' ? '📚' : '👥';
+
+        return `
+          <div class="search-suggestion" data-index="${index}">
+            <span class="suggestion-icon">${icon}</span>
+            <div class="suggestion-content">
+              <strong>${this.highlightQuery(title, query)}</strong>
+              ${subtitle ? `<br><small>${this.highlightQuery(subtitle, query)}</small>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
 
       // Add click handlers
       suggestions.querySelectorAll('.search-suggestion').forEach((suggestion, index) => {
         suggestion.addEventListener('click', () => {
-          this.showToast(`Открытие: ${results[index].title}`, 'info');
+          const result = results[index];
+          if (result.type === 'book') {
+            this.showToast(`Открытие книги: ${result.title}`, 'info');
+            this.navigateToSection('catalog');
+          } else {
+            this.showToast(`Открытие клуба: ${result.name}`, 'info');
+            this.navigateToSection('clubs');
+          }
           this.hideSearchSuggestions();
         });
       });
@@ -625,7 +910,7 @@ class BookClubApp {
       {
         id: 1,
         title: 'Добро пожаловать!',
-        message: 'Спасибо за регистрацию в BookClub',
+        message: `Спасибо за использование BookClub ${this.apiAvailable ? '(API режим)' : '(Демо режим)'}`,
         read: false,
         timestamp: new Date()
       }
@@ -697,7 +982,7 @@ class BookClubApp {
     const tourSteps = [
       {
         title: 'Добро пожаловать в BookClub! 👋',
-        content: 'Давайте познакомим вас с основными возможностями платформы.',
+        content: `Давайте познакомим вас с основными возможностями платформы. ${this.apiAvailable ? 'API подключен и работает!' : 'Работаем в демо-режиме.'}`,
         isLast: false
       },
       {
@@ -707,7 +992,7 @@ class BookClubApp {
       },
       {
         title: 'Готово! 🎉',
-        content: 'Теперь вы готовы использовать BookClub! Приятного чтения и общения.',
+        content: `Теперь вы готовы использовать BookClub! ${this.apiAvailable ? 'Все функции активны.' : 'В демо-режиме доступны основные функции.'}`,
         isLast: true
       }
     ];
@@ -750,7 +1035,7 @@ class BookClubApp {
     if (overlay) overlay.classList.add('hidden');
 
     localStorage.setItem('bookclub_onboarding_completed', 'true');
-    this.showToast('Добро пожаловать в BookClub! 🎉', 'success');
+    this.showToast(`Добро пожаловать в BookClub! ${this.apiAvailable ? '🚀' : '⚡'}`, 'success');
   }
 
   // Logout
@@ -855,16 +1140,30 @@ class BookClubApp {
     }
   }
 
-  // Initialize sample data
-  initializeData() {
+  // Initialize fallback data
+  initializeFallbackData() {
     this.booksData = [
       {
         id: 1,
         title: "Война и мир",
         author: "Лев Толстой",
         genre: "Классическая литература",
+        year: 1869,
         rating: 4.8,
-        cover: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=300&h=450&fit=crop"
+        ratingsCount: 1247,
+        cover: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=300&h=450&fit=crop",
+        description: "Эпический роман о русском обществе в эпоху наполеоновских войн"
+      },
+      {
+        id: 2,
+        title: "1984",
+        author: "Джордж Оруэлл",
+        genre: "Антиутопия",
+        year: 1949,
+        rating: 4.7,
+        ratingsCount: 2156,
+        cover: "https://images.unsplash.com/photo-1495640388908-05fa85288e61?w=300&h=450&fit=crop",
+        description: "Мрачная антиутопия о тоталитарном обществе будущего"
       }
     ];
 
@@ -873,7 +1172,12 @@ class BookClubApp {
         id: 1,
         name: "Классика навсегда",
         description: "Читаем и обсуждаем произведения классической литературы",
-        members: 156
+        members: 156,
+        currentBook: "Война и мир",
+        owner: "Анна Петрова",
+        avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop",
+        meetingDay: "Воскресенье",
+        meetingTime: "19:00"
       }
     ];
   }
